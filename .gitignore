@@ -1,0 +1,14 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# MacOS junk files
+.DS_Store
+
+# Environment
+.env
+instance/
+
+# VSCode settings (optional if you both use VSCode)
+.vscode/
