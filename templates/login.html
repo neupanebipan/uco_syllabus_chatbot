@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Professor Login</title>
+</head>
+<body>
+  <h2>Professor Login</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    {{ form.username.label }} {{ form.username() }}<br>
+    {{ form.password.label }} {{ form.password() }}<br>
+    {{ form.submit() }}
+  </form>
+  {% for message in get_flashed_messages() %}
+    <p style="color: red;">{{ message }}</p>
+  {% endfor %}
+</body>
+</html>

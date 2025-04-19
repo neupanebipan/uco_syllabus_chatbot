@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat with Chatbot</title>
+</head>
+<body>
+  <h2>Ask a Question About a Syllabus</h2>
+  <form method="POST">
+    <label>Department:</label>
+    <input type="text" name="department" required><br>
+    <label>Course Number:</label>
+    <input type="text" name="course_number" required><br>
+    <label>Your Question:</label>
+    <input type="text" name="question" required><br>
+    <input type="submit" value="Ask">
+  </form>
+
+  {% if response %}
+    <h3>Response:</h3>
+    <p>{{ response }}</p>
+  {% elif error %}
+    <p style="color:red;">{{ error }}</p>
+  {% endif %}
+</body>
+</html>

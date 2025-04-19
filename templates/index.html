@@ -1,25 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Syllabus Chatbot</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8">
+  <title>Syllabus Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Welcome to the Syllabus Chatbot</h1>
-    </header>
-
-    <main>
-        <section class="chat-container">
-            <p>Start chatting with the bot below!</p>
-            <!-- Later: Add chatbot input and output here -->
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2024 Syllabus Chatbot Team</p>
-    </footer>
+  <h1>Welcome to the Syllabus Chatbot</h1>
+  <p><a href="{{ url_for('chat') }}">Ask a Question</a> | <a href="{{ url_for('login') }}">Professor Login</a></p>
 </body>
 </html>
