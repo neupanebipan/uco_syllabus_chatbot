@@ -5,7 +5,7 @@ import os
 from config import Config
 from extensions import db
 from forms import LoginForm, UploadForm
-from models import Syllabus
+from models import Syllabus, Professor
 from utils.llama_api import call_llm_multi
 
 app = Flask(__name__)
@@ -17,6 +17,22 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 if not os.path.exists('instance'):
     os.makedirs('instance')
 
+
+def seed_professors():
+    with app.app_context():
+        if Professor.query.count() == 0:
+            professors = [
+                Professor(username='fujincheng', password='fu1234'),
+                Professor(username='zhang', password='zhang123'),
+                Professor(username='tmorris', password='tm123')
+            ]
+            db.session.bulk_save_objects(professors)
+            db.session.commit()
+
+with app.app_context():
+    db.create_all()
+    seed_professors()
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -26,8 +42,9 @@ def login():
     form = LoginForm()
     next_page = request.args.get('next')
     if form.validate_on_submit():
-        if form.username.data == 'professor' and form.password.data == 'password':
-            session['user'] = form.username.data
+        prof = Professor.query.filter_by(username=form.username.data).first()
+        if prof and form.password.data == prof.password:
+            session['user'] = prof.username
             return redirect(next_page or url_for('upload'))
         flash('Invalid credentials')
     return render_template('login.html', form=form)
@@ -66,7 +83,6 @@ def chat():
     department = request.form.get('department', '').strip().lower()
     course_number = request.form.get('course_number', '').strip().lower()
 
-    # Decide scope: filter by dept + course or search all
     if department and course_number:
         syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
     else:
@@ -83,9 +99,7 @@ def chat():
             'answer': response_text
         })
 
-    return render_template('chat_results.html', question=question, responses=responses)   
+    return render_template('chat_results.html', question=question, responses=responses)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)
