@@ -1,11 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
   <h2>Ask a question across all syllabi</h2>
+
   <form action="{{ url_for('chat') }}" method="POST">
     <input type="text" name="question" placeholder="Ask your question..." required><br><br>
-    <input type="text" name="department" placeholder="(Optional) Department (e.g., CPSC)">
-    <input type="text" name="course_number" placeholder="(Optional) Course Number (e.g., CPSC-101)">
-    <br><br>
+
+    <label for="department">Department (optional):</label><br>
+    <select name="department" id="department">
+      <option value="">-- Select Department --</option>
+      <option value="mathematics">Mathematics and Statistics</option>
+      <option value="computer_science">Computer Science</option>
+      <option value="business">Business</option>
+      <option value="psychology">Psychology</option>
+    </select><br><br>
+
+    <label for="course_number">Course Number (optional):</label><br>
+    <input type="text" name="course_number" placeholder="e.g., math-101"><br><br>
+
     <input type="submit" value="Search">
   </form>
 {% endblock %}
