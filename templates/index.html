@@ -1,12 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Syllabus Chatbot</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <h1>Welcome to the Syllabus Chatbot</h1>
-  <p><a href="{{ url_for('chat') }}">Ask a Question</a> | <a href="{{ url_for('login') }}">Professor Login</a></p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+  <h2>Ask a question across all syllabi</h2>
+  <form action="{{ url_for('chat') }}" method="POST">
+    <input type="text" name="question" placeholder="Ask your question..." required><br><br>
+    <input type="text" name="department" placeholder="(Optional) Department (e.g., CPSC)">
+    <input type="text" name="course_number" placeholder="(Optional) Course Number (e.g., CPSC-101)">
+    <br><br>
+    <input type="submit" value="Search">
+  </form>
+{% endblock %}

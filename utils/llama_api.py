@@ -1,13 +1,15 @@
-
+# utils/llama_api.py
+from utils.rag import retrieve_relevant_passage
 import requests
 
-def call_llm(question, syllabus_filename):
+def call_llm_multi(question, filepath):
+    context = retrieve_relevant_passage(question, filepath)
     payload = {
-        "prompt": f"Given the syllabus in file {syllabus_filename}, answer this: {question}",
+        "prompt": f"From this syllabus context:\n{context}\nAnswer the question: {question}",
         "max_tokens": 200
     }
     try:
-        response = requests.post("http://csai01:8000/generate", json=payload)
-        return response.json().get("response", "No answer returned.")
+        res = requests.post("http://csai01:8000/generate", json=payload)
+        return res.json().get("response", "No response returned.")
     except Exception as e:
-        return f"Error calling LLM API: {str(e)}"
+        return f"LLM call failed: {e}"

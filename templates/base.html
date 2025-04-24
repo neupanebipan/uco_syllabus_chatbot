@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Syllabus Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Syllabus Chatbot</h1>
+    <nav>
+      <a href="{{ url_for('index') }}">Home</a>
+      {% if session.get('user') %}
+        <a href="{{ url_for('upload') }}">Upload</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('upload') }}">Professor Upload</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

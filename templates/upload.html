@@ -1,22 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Upload Syllabus</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block content %}
   <h2>Upload a Syllabus</h2>
+
   <form method="POST" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
-    {{ form.department.label }} {{ form.department() }}<br>
-    {{ form.course_number.label }} {{ form.course_number() }}<br>
-    {{ form.course_name.label }} {{ form.course_name() }}<br>
-    {{ form.pdf.label }} {{ form.pdf() }}<br>
+
+    <label>{{ form.department.label }}</label><br>
+    {{ form.department() }}<br><br>
+
+    <label>{{ form.course_number.label }}</label><br>
+    {{ form.course_number() }}<br><br>
+
+    <label>{{ form.course_name.label }}</label><br>
+    {{ form.course_name() }}<br><br>
+
+    <label>{{ form.pdf.label }}</label><br>
+    {{ form.pdf() }}<br><br>
+
     {{ form.submit() }}
   </form>
-  <p><a href="{{ url_for('logout') }}">Logout</a></p>
+
   {% for message in get_flashed_messages() %}
     <p style="color: green;">{{ message }}</p>
   {% endfor %}
-</body>
-</html>
+
+  <br>
+  <a class="button" href="{{ url_for('index') }}">← Back to Ask a Question</a>
+{% endblock %}

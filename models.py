@@ -1,5 +1,5 @@
-
-from app import db
+# models.py
+from extensions import db
 
 class Syllabus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -7,9 +7,6 @@ class Syllabus(db.Model):
     department = db.Column(db.String(50), nullable=False)
     course_number = db.Column(db.String(20), nullable=False)
     course_name = db.Column(db.String(100), nullable=False)
-
-
-
 
 
 

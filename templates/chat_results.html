@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Results for: "{{ question }}"</h2>
+
+  {% if responses %}
+    {% for item in responses %}
+      <div class="result-box">
+        <h3>{{ item.department.upper() }}-{{ item.course_number }}: {{ item.course_name }}</h3>
+        <p>{{ item.answer }}</p>
+      </div>
+      <hr>
+    {% endfor %}
+  {% else %}
+    <p>No relevant answers found.</p>
+  {% endif %}
+{% endblock %}

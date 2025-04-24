@@ -1,14 +1,16 @@
-# Python
-venv/
+# Python cache
 __pycache__/
 *.pyc
 
-# MacOS junk files
+# Virtual environment
+venv/
+
+# Flask-generated folders
+instance/
+uploads/
+
+# macOS files
 .DS_Store
 
-# Environment
-.env
-instance/
-
-# VSCode settings (optional if you both use VSCode)
+# Editor config
 .vscode/
