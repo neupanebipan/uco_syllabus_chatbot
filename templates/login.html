@@ -9,9 +9,7 @@
     {{ form.submit() }}
   </form>
 
-  {% for message in get_flashed_messages() %}
-    <p style="color: red;">{{ message }}</p>
-  {% endfor %}
+  
 
   <br>
   <a class="button" href="{{ url_for('index') }}">← Back to Search Syllabus</a>

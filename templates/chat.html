@@ -1,26 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Chat with Chatbot</title>
-</head>
-<body>
-  <h2>Ask a Question About a Syllabus</h2>
-  <form method="POST">
-    <label>Department:</label>
-    <input type="text" name="department" required><br>
-    <label>Course Number:</label>
-    <input type="text" name="course_number" required><br>
-    <label>Your Question:</label>
-    <input type="text" name="question" required><br>
-    <input type="submit" value="Ask">
-  </form>
+{% extends "base.html" %}
 
-  {% if response %}
-    <h3>Response:</h3>
-    <p>{{ response }}</p>
-  {% elif error %}
-    <p style="color:red;">{{ error }}</p>
-  {% endif %}
-</body>
-</html>
+{% block content %}
+<h2>Live Chat with the Syllabus Assistant</h2>
+
+<form method="POST" action="{{ url_for('chat') }}" class="chat-form">
+  <label for="department">Department (optional):</label>
+  <select name="department">
+    <option value="">-- Select department (optional) --</option>
+    <option value="math">Mathematics</option>
+    <option value="cs">Computer Science</option>
+    <option value="business">Business</option>
+    <option value="psychology">Psychology</option>
+  </select>
+
+  <label for="course_number">Course Number (optional):</label>
+  <input type="text" name="course_number" placeholder="e.g., cs-123"><br><br>
+
+  <input type="text" name="question" placeholder="Type your message..." required style="width: 80%; padding: 8px;">
+  <input type="submit" value="Send" style="padding: 8px 16px;">
+</form>
+
+<style>
+  .chat-wrapper {
+    height: 70vh;
+    overflow-y: scroll;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-top: 20px;
+    margin-bottom: 15px;
+  }
+  .chat-bubble.user {
+    background-color: #d1ecf1;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: left;
+  }
+  .chat-bubble.assistant {
+    background-color: #e2e3e5;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: left;
+  }
+</style>
+
+<div class="chat-wrapper" id="chat-window">
+  {% for msg in chat_history %}
+    <div class="chat-bubble {{ msg.role }}">
+      <strong>{{ msg.role.capitalize() }}:</strong> {{ msg.content }}
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+  const chatWindow = document.getElementById("chat-window");
+  if (chatWindow) {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+</script>
+{% endblock %}

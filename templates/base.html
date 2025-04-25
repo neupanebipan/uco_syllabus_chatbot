@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -8,14 +9,20 @@
   <header>
     <h1>Syllabus Chatbot</h1>
     <nav>
-      <a href="{{ url_for('index') }}">Home</a>
+      
+      <a class="button" href="{{ url_for('reset_chat') }}">💬 New Chat</a>
+
       {% if session.get('user') %}
-        <a href="{{ url_for('upload') }}">Upload</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <a class="button" href="{{ url_for('upload') }}">Upload</a>
+        <a class="button" href="{{ url_for('reset_chat') }}">Reset Chat</a>
+        <a class="button" href="{{ url_for('logout') }}">Logout</a>
       {% else %}
-        <a href="{{ url_for('upload') }}">Professor Upload</a>
+        <a class="button" href="{{ url_for('upload') }}"> Upload syllabus</a>
       {% endif %}
     </nav>
+    {% if session.get('user') %}
+      <p style="margin-left: 20px; font-style: italic;">🔐 Logged in as: <strong>{{ session['user'] }}</strong></p>
+    {% endif %}
   </header>
 
   <main>

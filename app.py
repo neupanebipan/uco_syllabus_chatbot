@@ -17,13 +17,12 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 if not os.path.exists('instance'):
     os.makedirs('instance')
 
-
 def seed_professors():
     with app.app_context():
         if Professor.query.count() == 0:
             professors = [
-                Professor(username='fujincheng', password='fu1234'),
-                Professor(username='zhang', password='zhang123'),
+                Professor(username='jichengfu', password='fu123'),
+                Professor(username='zhang', password='z123'),
                 Professor(username='tmorris', password='tm123')
             ]
             db.session.bulk_save_objects(professors)
@@ -35,7 +34,7 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return redirect(url_for('chat'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -45,6 +44,7 @@ def login():
         prof = Professor.query.filter_by(username=form.username.data).first()
         if prof and form.password.data == prof.password:
             session['user'] = prof.username
+            session['user_id'] = prof.id
             return redirect(next_page or url_for('upload'))
         flash('Invalid credentials')
     return render_template('login.html', form=form)
@@ -52,11 +52,13 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('user', None)
+    session.pop('user_id', None)
+    session.pop('chat_history', None)
     return redirect(url_for('index'))
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
-    if 'user' not in session:
+    if 'user' not in session or 'user_id' not in session:
         return redirect(url_for('login', next=request.url))
     form = UploadForm()
     if form.validate_on_submit():
@@ -69,37 +71,65 @@ def upload():
                 filename=filename,
                 department=form.department.data.strip().lower(),
                 course_number=form.course_number.data.strip().lower(),
-                course_name=form.course_name.data.strip()
+                course_name=form.course_name.data.strip(),
+                professor_id=session['user_id']
             )
             db.session.add(new_syllabus)
             db.session.commit()
             flash('Syllabus uploaded successfully')
             return redirect(url_for('upload'))
-    return render_template('upload.html', form=form)
+    syllabi = Syllabus.query.filter_by(professor_id=session['user_id']).all()
+    return render_template('upload.html', form=form, syllabi=syllabi)
 
-@app.route('/chat', methods=['POST'])
+@app.route('/delete/<int:syllabus_id>', methods=['POST'])
+def delete_syllabus(syllabus_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    syllabus = Syllabus.query.get_or_404(syllabus_id)
+    if syllabus.professor_id != session['user_id']:
+        flash('Unauthorized access')
+        return redirect(url_for('upload'))
+    db.session.delete(syllabus)
+    db.session.commit()
+    flash('Syllabus deleted successfully')
+    return redirect(url_for('upload'))
+
+@app.route('/chat', methods=['GET', 'POST'])
 def chat():
-    question = request.form['question'].strip()
-    department = request.form.get('department', '').strip().lower()
-    course_number = request.form.get('course_number', '').strip().lower()
+    if request.method == 'POST':
+        question = request.form['question'].strip()
+        department = request.form.get('department', '').strip().lower()
+        course_number = request.form.get('course_number', '').strip().lower()
 
-    if department and course_number:
-        syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
-    else:
-        syllabi = Syllabus.query.all()
+        if department and course_number:
+            syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
+        else:
+            syllabi = Syllabus.query.all()
 
-    responses = []
-    for s in syllabi:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
-        response_text = call_llm_multi(question, filepath)
-        responses.append({
-            'department': s.department,
-            'course_number': s.course_number,
-            'course_name': s.course_name,
-            'answer': response_text
-        })
+        if syllabi:
+            s = syllabi[0]
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
+            response = call_llm_multi(question, filepath)
+            print("LLM raw response:", response)
+            response_text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
+        else:
+            response_text = "Sorry, I couldn't find any relevant course materials."
 
-    return render_template('chat_results.html', question=question, responses=responses)
+        history = session.get('chat_history', [])
+        history.append({"role": "user", "content": question})
+        history.append({"role": "assistant", "content": response_text})
+        session['chat_history'] = history
+
+        return redirect(url_for('chat'))
+
+    print("Chat history at render:", session.get("chat_history"))
+    chat_history = session.get('chat_history', [])
+    return render_template('chat.html', chat_history=chat_history)
+
+@app.route('/reset_chat')
+def reset_chat():
+    session.pop('chat_history', None)
+    return redirect(url_for('chat'))
 
 if __name__ == '__main__':
     app.run(debug=True)

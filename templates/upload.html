@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-
 {% block content %}
   <h2>Upload a Syllabus</h2>
+
+  <p>Logged in as: <strong>{{ session['user'] }}</strong></p>
 
   <form method="POST" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
@@ -25,6 +26,21 @@
     <p style="color: green;">{{ message }}</p>
   {% endfor %}
 
-  <br>
-  <a class="button" href="{{ url_for('index') }}">← Back to Ask a Question</a>
+  <h3>Your Uploaded Syllabi</h3>
+  {% if syllabi %}
+    <ul>
+      {% for s in syllabi %}
+        <li>
+          {{ s.course_number.upper() }} - {{ s.course_name }} ({{ s.department }}) — 
+          <strong>{{ s.filename }}</strong>
+          <form method="POST" action="{{ url_for('delete_syllabus', syllabus_id=s.id) }}" style="display:inline;">
+            <button type="submit">🗑 Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You haven’t uploaded any syllabi yet.</p>
+  {% endif %}
+
 {% endblock %}
