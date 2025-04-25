@@ -22,9 +22,7 @@
     {{ form.submit() }}
   </form>
 
-  {% for message in get_flashed_messages() %}
-    <p style="color: green;">{{ message }}</p>
-  {% endfor %}
+  
 
   <h3>Your Uploaded Syllabi</h3>
   {% if syllabi %}
