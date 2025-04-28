@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Professor Signup</h2>
+
+<form method="POST">
+  {{ form.hidden_tag() }}
+  
+  {{ form.username.label }} {{ form.username() }}<br><br>
+  {{ form.password.label }} {{ form.password() }}<br><br>
+  {{ form.submit() }}
+</form>
+
+{% for message in get_flashed_messages() %}
+  <p style="color: red;">{{ message }}</p>
+{% endfor %}
+{% endblock %}

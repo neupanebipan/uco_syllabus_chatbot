@@ -9,17 +9,17 @@
   <header>
     <h1>Syllabus Chatbot</h1>
     <nav>
-      
-      <a class="button" href="{{ url_for('reset_chat') }}">💬 New Chat</a>
-
+      <a class="button" href="{{ url_for('chat') }}">💬 Chat</a>
       {% if session.get('user') %}
         <a class="button" href="{{ url_for('upload') }}">Upload</a>
         <a class="button" href="{{ url_for('reset_chat') }}">Reset Chat</a>
         <a class="button" href="{{ url_for('logout') }}">Logout</a>
       {% else %}
-        <a class="button" href="{{ url_for('upload') }}"> Upload syllabus</a>
+        <a class="button" href="{{ url_for('signup') }}">Signup</a>
+        <a class="button" href="{{ url_for('login') }}">Login</a>
       {% endif %}
     </nav>
+    
     {% if session.get('user') %}
       <p style="margin-left: 20px; font-style: italic;">🔐 Logged in as: <strong>{{ session['user'] }}</strong></p>
     {% endif %}

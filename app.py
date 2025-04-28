@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 from config import Config
 from extensions import db
-from forms import LoginForm, UploadForm
+from forms import LoginForm, UploadForm,SignupForm
 from models import Syllabus, Professor
 from utils.llama_api import call_llm_multi
 
@@ -48,6 +48,25 @@ def login():
             return redirect(next_page or url_for('upload'))
         flash('Invalid credentials')
     return render_template('login.html', form=form)
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = SignupForm()
+    if form.validate_on_submit():
+        existing_prof = Professor.query.filter_by(username=form.username.data).first()
+        if existing_prof:
+            flash('Username already exists. Please choose another.', 'error')
+            return redirect(url_for('signup'))
+        new_prof = Professor(
+            username=form.username.data,
+            password=form.password.data
+        )
+        db.session.add(new_prof)
+        db.session.commit()
+        flash('Account created successfully. Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html', form=form)
+
 
 @app.route('/logout')
 def logout():

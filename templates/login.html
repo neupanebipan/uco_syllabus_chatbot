@@ -2,6 +2,19 @@
 
 {% block content %}
   <h2>Professor Login to Upload PDF</h2>
+
+  <!-- 🚨 ADD THIS TO SHOW MESSAGES -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <p style="color: {% if category == 'success' %}green{% else %}red{% endif %};">
+          {{ message }}
+        </p>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <!-- 🚨 END MESSAGE BLOCK -->
+
   <form method="POST">
     {{ form.hidden_tag() }}
     <label>{{ form.username.label }}</label> {{ form.username() }}<br><br>
@@ -9,9 +22,6 @@
     {{ form.submit() }}
   </form>
 
-  
-
   <br>
   <a class="button" href="{{ url_for('index') }}">← Back to Search Syllabus</a>
 {% endblock %}
-
