@@ -124,6 +124,11 @@ def chat():
             syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
         else:
             syllabi = Syllabus.query.all()
+        
+        print("Selected department:", department)
+        print("Selected course number:", course_number)
+        print("Found syllabi:", syllabi)
+
 
         if syllabi:
             s = syllabi[0]
