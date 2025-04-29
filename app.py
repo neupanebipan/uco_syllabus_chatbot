@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.utils import secure_filename
 import os
 from config import Config
@@ -94,58 +95,54 @@ def delete_syllabus(syllabus_id):
     flash('Syllabus deleted successfully')
     return redirect(url_for('upload'))
 
-@app.route('/chat', methods=['GET', 'POST'])
+@app.route('/chat', methods=['GET'])
 def chat():
-    if request.method == 'POST':
-        question = request.form['question'].strip()
-        department = request.form.get('department', '').strip().lower()
-        course_number = request.form.get('course_number', '').strip().lower()
-
-        if department and course_number:
-            syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
-        elif department:
-            syllabi = Syllabus.query.filter_by(department=department).all()
-        elif course_number:
-            syllabi = Syllabus.query.filter_by(course_number=course_number).all()
-        else:
-            syllabi = Syllabus.query.all()
-
-
-        print("Selected department:", department)
-        print("Selected course number:", course_number)
-        print("Found syllabi:", [s.filename for s in syllabi])
-
-        clean_responses = []
-
-        if syllabi:
-            for s in syllabi:
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
-                response = call_llm_multi(question, filepath)
-
-                if isinstance(response, dict) and 'content' in response:
-                    answer_text = response['content']
-                elif isinstance(response, dict) and 'response' in response and 'content' in response['response']:
-                    answer_text = response['response']['content']
-                else:
-                    answer_text = "Sorry, there was an error retrieving information from this syllabus."
-
-                course_info = f"📘 {s.course_number.upper()} - {s.course_name} ({s.department})"
-                full_response = f"{course_info}\n{answer_text.strip()}"
-                clean_responses.append(full_response)
-        else:
-            clean_responses.append("Sorry, I couldn't find any relevant course materials.")
-
-        combined_response = "\n\n".join(clean_responses)
-
-        history = session.get('chat_history', [])
-        history.append({"role": "user", "content": question})
-        history.append({"role": "assistant", "content": combined_response})
-        session['chat_history'] = history
-
-        return redirect(url_for('chat'))
-
     chat_history = session.get('chat_history', [])
     return render_template('chat.html', chat_history=chat_history)
+
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    question = request.form['question'].strip()
+    department = request.form.get('department', '').strip().lower()
+    course_number = request.form.get('course_number', '').strip().lower()
+
+    if department and course_number:
+        syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
+    elif department:
+        syllabi = Syllabus.query.filter_by(department=department).all()
+    elif course_number:
+        syllabi = Syllabus.query.filter_by(course_number=course_number).all()
+    else:
+        syllabi = Syllabus.query.all()
+
+    clean_responses = []
+
+    if syllabi:
+        for s in syllabi:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
+            response = call_llm_multi(question, filepath)
+
+            if isinstance(response, dict) and 'content' in response:
+                answer_text = response['content']
+            elif isinstance(response, dict) and 'response' in response and 'content' in response['response']:
+                answer_text = response['response']['content']
+            else:
+                answer_text = "Sorry, there was an error retrieving information from this syllabus."
+
+            course_info = f"📘 {s.course_number.upper()} - {s.course_name} ({s.department})"
+            full_response = f"{course_info}\n{answer_text.strip()}"
+            clean_responses.append(full_response)
+    else:
+        clean_responses.append("Sorry, I couldn't find any relevant course materials.")
+
+    combined_response = "\n\n".join(clean_responses)
+
+    history = session.get('chat_history', [])
+    history.append({"role": "user", "content": question})
+    history.append({"role": "assistant", "content": combined_response})
+    session['chat_history'] = history
+
+    return jsonify({"response": combined_response})
 
 @app.route('/reset_chat')
 def reset_chat():
