@@ -1,53 +1,32 @@
-# utils/rag.py
 import pdfplumber
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+import os
 import re
 
-def extract_text_from_pdf(filepath):
-    text = ""
-    with pdfplumber.open(filepath) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+def extract_text_from_pdf(pdf_path):
+    if not os.path.exists(pdf_path):
+        return ""
 
-            # Optional: extract tables as text
-            tables = page.extract_tables()
-            for table in tables:
-                for row in table:
-                    row_text = ' | '.join(cell for cell in row if cell)
-                    text += row_text + "\n"
-    return text
+    with pdfplumber.open(pdf_path) as pdf:
+        return "\n".join(page.extract_text() or "" for page in pdf.pages)
 
 def split_into_sentences(text):
-    # Enhanced splitter that includes table-style lines
-    lines = text.split('\n')
-    sentences = []
-    for line in lines:
-        if re.search(r'\w+', line) and len(line.strip()) > 10:
-            sentences.append(line.strip())
+    # Lightweight custom sentence splitter based on punctuation
+    text = text.replace('\n', ' ')
+    sentences = re.split(r'(?<=[.!?]) +', text)
     return sentences
 
 def retrieve_relevant_passage(question, filepath):
     full_text = extract_text_from_pdf(filepath)
+    if not full_text.strip():
+        return ""
 
-    # Use enhanced line-aware sentence splitter
     sentences = split_into_sentences(full_text)
-    documents = sentences + [question]
+    keywords = [kw.strip().lower() for kw in question.lower().split() if len(kw) > 3]
 
-    vectorizer = TfidfVectorizer(ngram_range=(1, 2)).fit_transform(documents)
-    vectors = vectorizer.toarray()
+    relevant_sentences = []
+    for sent in sentences:
+        sent_lower = sent.lower()
+        if any(kw in sent_lower for kw in keywords):
+            relevant_sentences.append(sent)
 
-    similarities = cosine_similarity([vectors[-1]], vectors[:-1])[0]
-    top_indices = np.argsort(similarities)[-5:][::-1]  # Top 5 most relevant sentences
-
-    # Include a context window around each top sentence (before/after)
-    top_matches = []
-    for i in top_indices:
-        if similarities[i] > 0.05:
-            context_block = sentences[max(0, i-1):min(len(sentences), i+2)]
-            top_matches.extend(context_block)
-
-    return "\n\n".join(dict.fromkeys(top_matches))  # remove duplicates while preserving order
+    return " ".join(relevant_sentences) if relevant_sentences else full_text

@@ -1,10 +1,9 @@
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 import os
 from config import Config
 from extensions import db
-from forms import LoginForm, UploadForm,SignupForm
+from forms import LoginForm, UploadForm, SignupForm
 from models import Syllabus, Professor
 from utils.llama_api import call_llm_multi
 
@@ -17,24 +16,27 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 if not os.path.exists('instance'):
     os.makedirs('instance')
 
-def seed_professors():
-    with app.app_context():
-        if Professor.query.count() == 0:
-            professors = [
-                Professor(username='jichengfu', password='fu123'),
-                Professor(username='zhang', password='z123'),
-                Professor(username='tmorris', password='tm123')
-            ]
-            db.session.bulk_save_objects(professors)
-            db.session.commit()
-
 with app.app_context():
     db.create_all()
-    seed_professors()
 
 @app.route('/')
 def index():
     return redirect(url_for('chat'))
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = SignupForm()
+    if form.validate_on_submit():
+        existing_prof = Professor.query.filter_by(username=form.username.data).first()
+        if existing_prof:
+            flash('Username already exists. Please choose another.', 'error')
+            return redirect(url_for('signup'))
+        new_prof = Professor(username=form.username.data, password=form.password.data)
+        db.session.add(new_prof)
+        db.session.commit()
+        flash('Account created successfully. Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -49,30 +51,9 @@ def login():
         flash('Invalid credentials')
     return render_template('login.html', form=form)
 
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    form = SignupForm()
-    if form.validate_on_submit():
-        existing_prof = Professor.query.filter_by(username=form.username.data).first()
-        if existing_prof:
-            flash('Username already exists. Please choose another.', 'error')
-            return redirect(url_for('signup'))
-        new_prof = Professor(
-            username=form.username.data,
-            password=form.password.data
-        )
-        db.session.add(new_prof)
-        db.session.commit()
-        flash('Account created successfully. Please log in.', 'success')
-        return redirect(url_for('login'))
-    return render_template('signup.html', form=form)
-
-
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
-    session.pop('user_id', None)
-    session.pop('chat_history', None)
+    session.clear()
     return redirect(url_for('index'))
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -122,31 +103,34 @@ def chat():
 
         if department and course_number:
             syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
+        elif department:
+            syllabi = Syllabus.query.filter_by(department=department).all()
         else:
             syllabi = Syllabus.query.all()
-        
+
         print("Selected department:", department)
         print("Selected course number:", course_number)
-        print("Found syllabi:", syllabi)
+        print("Found syllabi:", [s.filename for s in syllabi])
 
+        full_response_text = ""
 
         if syllabi:
-            s = syllabi[0]
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
-            response = call_llm_multi(question, filepath)
-            print("LLM raw response:", response)
-            response_text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
+            for s in syllabi:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
+                response = call_llm_multi(question, filepath)
+                text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
+
+                full_response_text += f"\n📘 {s.course_number.upper()} - {s.course_name} ({s.department})\n{text}\n"
         else:
-            response_text = "Sorry, I couldn't find any relevant course materials."
+            full_response_text = "Sorry, I couldn't find any relevant course materials."
 
         history = session.get('chat_history', [])
         history.append({"role": "user", "content": question})
-        history.append({"role": "assistant", "content": response_text})
+        history.append({"role": "assistant", "content": full_response_text})
         session['chat_history'] = history
 
         return redirect(url_for('chat'))
 
-    print("Chat history at render:", session.get("chat_history"))
     chat_history = session.get('chat_history', [])
     return render_template('chat.html', chat_history=chat_history)
 

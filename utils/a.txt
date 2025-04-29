@@ -1,0 +1,556 @@
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.utils import secure_filename
+import os
+from config import Config
+from extensions import db
+from forms import LoginForm, UploadForm,SignupForm
+from models import Syllabus, Professor
+from utils.llama_api import call_llm_multi
+
+app = Flask(__name__)
+app.config.from_object(Config)
+db.init_app(app)
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+if not os.path.exists('instance'):
+    os.makedirs('instance')
+
+def seed_professors():
+    with app.app_context():
+        if Professor.query.count() == 0:
+            professors = [
+                Professor(username='jichengfu', password='fu123'),
+                Professor(username='zhang', password='z123'),
+                Professor(username='tmorris', password='tm123')
+            ]
+            db.session.bulk_save_objects(professors)
+            db.session.commit()
+
+with app.app_context():
+    db.create_all()
+    seed_professors()
+
+@app.route('/')
+def index():
+    return redirect(url_for('chat'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    next_page = request.args.get('next')
+    if form.validate_on_submit():
+        prof = Professor.query.filter_by(username=form.username.data).first()
+        if prof and form.password.data == prof.password:
+            session['user'] = prof.username
+            session['user_id'] = prof.id
+            return redirect(next_page or url_for('upload'))
+        flash('Invalid credentials')
+    return render_template('login.html', form=form)
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = SignupForm()
+    if form.validate_on_submit():
+        existing_prof = Professor.query.filter_by(username=form.username.data).first()
+        if existing_prof:
+            flash('Username already exists. Please choose another.', 'error')
+            return redirect(url_for('signup'))
+        new_prof = Professor(
+            username=form.username.data,
+            password=form.password.data
+        )
+        db.session.add(new_prof)
+        db.session.commit()
+        flash('Account created successfully. Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html', form=form)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    session.pop('user_id', None)
+    session.pop('chat_history', None)
+    return redirect(url_for('index'))
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if 'user' not in session or 'user_id' not in session:
+        return redirect(url_for('login', next=request.url))
+    form = UploadForm()
+    if form.validate_on_submit():
+        file = form.pdf.data
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            new_syllabus = Syllabus(
+                filename=filename,
+                department=form.department.data.strip().lower(),
+                course_number=form.course_number.data.strip().lower(),
+                course_name=form.course_name.data.strip(),
+                professor_id=session['user_id']
+            )
+            db.session.add(new_syllabus)
+            db.session.commit()
+            flash('Syllabus uploaded successfully')
+            return redirect(url_for('upload'))
+    syllabi = Syllabus.query.filter_by(professor_id=session['user_id']).all()
+    return render_template('upload.html', form=form, syllabi=syllabi)
+
+@app.route('/delete/<int:syllabus_id>', methods=['POST'])
+def delete_syllabus(syllabus_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    syllabus = Syllabus.query.get_or_404(syllabus_id)
+    if syllabus.professor_id != session['user_id']:
+        flash('Unauthorized access')
+        return redirect(url_for('upload'))
+    db.session.delete(syllabus)
+    db.session.commit()
+    flash('Syllabus deleted successfully')
+    return redirect(url_for('upload'))
+
+@app.route('/chat', methods=['GET', 'POST'])
+def chat():
+    if request.method == 'POST':
+        question = request.form['question'].strip()
+        department = request.form.get('department', '').strip().lower()
+        course_number = request.form.get('course_number', '').strip().lower()
+
+        if department and course_number:
+            syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
+        else:
+            syllabi = Syllabus.query.all()
+        
+        print("Selected department:", department)
+        print("Selected course number:", course_number)
+        print("Found syllabi:", syllabi)
+
+
+        if syllabi:
+            s = syllabi[0]
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
+            response = call_llm_multi(question, filepath)
+            print("LLM raw response:", response)
+            response_text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
+        else:
+            response_text = "Sorry, I couldn't find any relevant course materials."
+
+        history = session.get('chat_history', [])
+        history.append({"role": "user", "content": question})
+        history.append({"role": "assistant", "content": response_text})
+        session['chat_history'] = history
+
+        return redirect(url_for('chat'))
+
+    print("Chat history at render:", session.get("chat_history"))
+    chat_history = session.get('chat_history', [])
+    return render_template('chat.html', chat_history=chat_history)
+
+@app.route('/reset_chat')
+def reset_chat():
+    session.pop('chat_history', None)
+    return redirect(url_for('chat'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
+this is app.py 
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.utils import secure_filename
+import os
+from config import Config
+from extensions import db
+from forms import LoginForm, UploadForm,SignupForm
+from models import Syllabus, Professor
+from utils.llama_api import call_llm_multi
+
+app = Flask(__name__)
+app.config.from_object(Config)
+db.init_app(app)
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+if not os.path.exists('instance'):
+    os.makedirs('instance')
+
+def seed_professors():
+    with app.app_context():
+        if Professor.query.count() == 0:
+            professors = [
+                Professor(username='jichengfu', password='fu123'),
+                Professor(username='zhang', password='z123'),
+                Professor(username='tmorris', password='tm123')
+            ]
+            db.session.bulk_save_objects(professors)
+            db.session.commit()
+
+with app.app_context():
+    db.create_all()
+    seed_professors()
+
+@app.route('/')
+def index():
+    return redirect(url_for('chat'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    next_page = request.args.get('next')
+    if form.validate_on_submit():
+        prof = Professor.query.filter_by(username=form.username.data).first()
+        if prof and form.password.data == prof.password:
+            session['user'] = prof.username
+            session['user_id'] = prof.id
+            return redirect(next_page or url_for('upload'))
+        flash('Invalid credentials')
+    return render_template('login.html', form=form)
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = SignupForm()
+    if form.validate_on_submit():
+        existing_prof = Professor.query.filter_by(username=form.username.data).first()
+        if existing_prof:
+            flash('Username already exists. Please choose another.', 'error')
+            return redirect(url_for('signup'))
+        new_prof = Professor(
+            username=form.username.data,
+            password=form.password.data
+        )
+        db.session.add(new_prof)
+        db.session.commit()
+        flash('Account created successfully. Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html', form=form)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    session.pop('user_id', None)
+    session.pop('chat_history', None)
+    return redirect(url_for('index'))
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if 'user' not in session or 'user_id' not in session:
+        return redirect(url_for('login', next=request.url))
+    form = UploadForm()
+    if form.validate_on_submit():
+        file = form.pdf.data
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            new_syllabus = Syllabus(
+                filename=filename,
+                department=form.department.data.strip().lower(),
+                course_number=form.course_number.data.strip().lower(),
+                course_name=form.course_name.data.strip(),
+                professor_id=session['user_id']
+            )
+            db.session.add(new_syllabus)
+            db.session.commit()
+            flash('Syllabus uploaded successfully')
+            return redirect(url_for('upload'))
+    syllabi = Syllabus.query.filter_by(professor_id=session['user_id']).all()
+    return render_template('upload.html', form=form, syllabi=syllabi)
+
+@app.route('/delete/<int:syllabus_id>', methods=['POST'])
+def delete_syllabus(syllabus_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    syllabus = Syllabus.query.get_or_404(syllabus_id)
+    if syllabus.professor_id != session['user_id']:
+        flash('Unauthorized access')
+        return redirect(url_for('upload'))
+    db.session.delete(syllabus)
+    db.session.commit()
+    flash('Syllabus deleted successfully')
+    return redirect(url_for('upload'))
+
+@app.route('/chat', methods=['GET', 'POST'])
+def chat():
+    if request.method == 'POST':
+        question = request.form['question'].strip()
+        department = request.form.get('department', '').strip().lower()
+        course_number = request.form.get('course_number', '').strip().lower()
+
+        if department and course_number:
+            syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
+        else:
+            syllabi = Syllabus.query.all()
+        
+        print("Selected department:", department)
+        print("Selected course number:", course_number)
+        print("Found syllabi:", syllabi)
+
+
+        if syllabi:
+            s = syllabi[0]
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
+            response = call_llm_multi(question, filepath)
+            print("LLM raw response:", response)
+            response_text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
+        else:
+            response_text = "Sorry, I couldn't find any relevant course materials."
+
+        history = session.get('chat_history', [])
+        history.append({"role": "user", "content": question})
+        history.append({"role": "assistant", "content": response_text})
+        session['chat_history'] = history
+
+        return redirect(url_for('chat'))
+
+    print("Chat history at render:", session.get("chat_history"))
+    chat_history = session.get('chat_history', [])
+    return render_template('chat.html', chat_history=chat_history)
+
+@app.route('/reset_chat')
+def reset_chat():
+    session.pop('chat_history', None)
+    return redirect(url_for('chat'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
+this is app.py
+
+# utils/llama_api.py
+import requests
+from utils.rag import retrieve_relevant_passage
+
+def call_llm_multi(question, filepath):
+    context = retrieve_relevant_passage(question, filepath)
+    prompt = f"""
+You are a university syllabus assistant. The following content was extracted from a course syllabus. It may include a schedule, topics, exam dates, or grading breakdowns.
+
+Your job is to answer the student's question clearly and precisely based on the syllabus context.
+
+Syllabus Content:
+{context}
+
+Student Question:
+{question}
+
+If the syllabus includes dates, weeks, topic titles, or grading components related to the question, include those in your answer. Do not guess if the syllabus does not provide a clear answer.
+"""
+
+    payload = {
+        "prompt": prompt,
+        "max_tokens": 400,
+        "temperature": 0.4,
+        "top_p": 0.9,
+        "repetition_penalty": 1.2,
+        "top_k": 40
+    }
+    try:
+        response = requests.post("http://csai01:8000/generate", json=payload)
+        response.raise_for_status()
+        return response.json().get("response", "[No meaningful answer returned]")
+    except requests.exceptions.RequestException as e:
+        return f"LLM call failed: {str(e)}"
+        this is llama.py 
+
+
+# utils/rag.py
+import pdfplumber
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import re
+
+def extract_text_from_pdf(filepath):
+    text = ""
+    with pdfplumber.open(filepath) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+
+            # Optional: extract tables as text
+            tables = page.extract_tables()
+            for table in tables:
+                for row in table:
+                    row_text = ' | '.join(cell for cell in row if cell)
+                    text += row_text + "\n"
+    return text
+
+def split_into_sentences(text):
+    # Enhanced splitter that includes table-style lines
+    lines = text.split('\n')
+    sentences = []
+    for line in lines:
+        if re.search(r'\w+', line) and len(line.strip()) > 10:
+            sentences.append(line.strip())
+    return sentences
+
+def retrieve_relevant_passage(question, filepath):
+    full_text = extract_text_from_pdf(filepath)
+
+    # Use enhanced line-aware sentence splitter
+    sentences = split_into_sentences(full_text)
+    documents = sentences + [question]
+
+    vectorizer = TfidfVectorizer(ngram_range=(1, 2)).fit_transform(documents)
+    vectors = vectorizer.toarray()
+
+    similarities = cosine_similarity([vectors[-1]], vectors[:-1])[0]
+    top_indices = np.argsort(similarities)[-5:][::-1]  # Top 5 most relevant sentences
+
+    # Include a context window around each top sentence (before/after)
+    top_matches = []
+    for i in top_indices:
+        if similarities[i] > 0.05:
+            context_block = sentences[max(0, i-1):min(len(sentences), i+2)]
+            top_matches.extend(context_block)
+
+    return "\n\n".join(dict.fromkeys(top_matches))  # remove duplicates while preserving order
+this is rag.py 
+# forms.py
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, FileField, SubmitField, SelectField
+from wtforms.validators import DataRequired
+from flask_wtf.file import FileAllowed
+from wtforms.validators import InputRequired, Length
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+class UploadForm(FlaskForm):
+    department = SelectField('Department', choices=[
+        ('mathematics', 'Mathematics and Statistics'),
+        ('computer_science', 'Computer Science'),
+        ('business', 'Business'),
+        ('psychology', 'Psychology')
+    ], validators=[DataRequired()])
+    course_number = StringField('Course Number', validators=[DataRequired()])
+    course_name = StringField('Course Name', validators=[DataRequired()])
+    pdf = FileField('PDF File', validators=[FileAllowed(['pdf'], 'PDF only!')])
+    submit = SubmitField('Upload')
+
+class SignupForm(FlaskForm):
+    username = StringField('Username', validators=[InputRequired(), Length(min=4, max=25)])
+    password = PasswordField('Password', validators=[InputRequired(), Length(min=4, max=25)])
+    submit = SubmitField('Sign Up')
+
+this is froms.py 
+
+{% extends "base.html" %}
+{% block content %}
+  <h2>Upload a Syllabus</h2>
+
+  <p>Logged in as: <strong>{{ session['user'] }}</strong></p>
+
+  <form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+
+    <label>{{ form.department.label }}</label><br>
+    {{ form.department() }}<br><br>
+
+    <label>{{ form.course_number.label }}</label><br>
+    {{ form.course_number() }}<br><br>
+
+    <label>{{ form.course_name.label }}</label><br>
+    {{ form.course_name() }}<br><br>
+
+    <label>{{ form.pdf.label }}</label><br>
+    {{ form.pdf() }}<br><br>
+
+    {{ form.submit() }}
+  </form>
+ths is form.html
+  
+
+  <h3>Your Uploaded Syllabi</h3>
+  {% if syllabi %}
+    <ul>
+      {% for s in syllabi %}
+        <li>
+          {{ s.course_number.upper() }} - {{ s.course_name }} ({{ s.department }}) — 
+          <strong>{{ s.filename }}</strong>
+          <form method="POST" action="{{ url_for('delete_syllabus', syllabus_id=s.id) }}" style="display:inline;">
+            <button type="submit">🗑 Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You haven’t uploaded any syllabi yet.</p>
+  {% endif %}
+
+{% endblock %}
+this is upload.html
+
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Live Chat with the Syllabus Assistant</h2>
+
+<form method="POST" action="{{ url_for('chat') }}" class="chat-form">
+  <label for="department">Department (optional):</label>
+  <select name="department">
+    <option value="">-- Select department (optional) --</option>
+    <option value="mathematics">Mathematics</option>
+    <option value="computer_science">Computer Science</option>
+    <option value="business">Business</option>
+    <option value="psychology">Psychology</option>
+  </select>
+
+
+  <label for="course_number">Course Number (optional):</label>
+  <input type="text" name="course_number" placeholder="e.g., cs-123"><br><br>
+
+  <input type="text" name="question" placeholder="Type your message..." required style="width: 80%; padding: 8px;">
+  <input type="submit" value="Send" style="padding: 8px 16px;">
+</form>
+
+<style>
+  .chat-wrapper {
+    height: 70vh;
+    overflow-y: scroll;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-top: 20px;
+    margin-bottom: 15px;
+  }
+  .chat-bubble.user {
+    background-color: #d1ecf1;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: left;
+  }
+  .chat-bubble.assistant {
+    background-color: #e2e3e5;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: left;
+  }
+</style>
+
+<div class="chat-wrapper" id="chat-window">
+  {% for msg in chat_history %}
+    <div class="chat-bubble {{ msg.role }}">
+      <strong>{{ msg.role.capitalize() }}:</strong> {{ msg.content }}
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+  const chatWindow = document.getElementById("chat-window");
+  if (chatWindow) {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+</script>
+{% endblock %}
+this is chat.hmtl
