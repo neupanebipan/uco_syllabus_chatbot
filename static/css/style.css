@@ -24,10 +24,7 @@ main {
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-/* Remove this: */
-input[type="text"], select, button {
-  flex: 1;
-}
+
 
 /* Add this instead: */
 input[type="text"], select {
@@ -124,4 +121,28 @@ button:disabled {
 
 .send-btn:disabled {
   background-color: #aaa;
+}
+/* Style for back links to look like buttons */
+a.back-button {
+  display: inline-block;
+  padding: 8px 16px;
+  margin-top: 10px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.95em;
+}
+
+a.back-button:hover {
+  background-color: #0056b3;
+}
+
+/* Make form inputs consistent */
+input[type="text"], input[type="password"] {
+  width: 300px;
+  padding: 10px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
 }

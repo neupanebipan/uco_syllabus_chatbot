@@ -40,14 +40,19 @@
   const chatWindow = document.getElementById('chat-window');
   const typingIndicator = document.getElementById('typing-indicator');
 
+  function scrollToBottom() {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  window.onload = scrollToBottom;
+
   chatForm.addEventListener('submit', async function(event) {
     event.preventDefault();
-    
+
     const formData = new FormData(chatForm);
     const questionInput = document.getElementById('question');
     const sendBtn = document.getElementById('send-btn');
 
-    // Show typing...
     typingIndicator.style.display = 'block';
     sendBtn.disabled = true;
 
@@ -61,7 +66,6 @@
     sendBtn.disabled = false;
     questionInput.value = '';
 
-    // Reload chat window
     location.reload();
   });
 </script>
