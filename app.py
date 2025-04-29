@@ -105,28 +105,41 @@ def chat():
             syllabi = Syllabus.query.filter_by(department=department, course_number=course_number).all()
         elif department:
             syllabi = Syllabus.query.filter_by(department=department).all()
+        elif course_number:
+            syllabi = Syllabus.query.filter_by(course_number=course_number).all()
         else:
             syllabi = Syllabus.query.all()
+
 
         print("Selected department:", department)
         print("Selected course number:", course_number)
         print("Found syllabi:", [s.filename for s in syllabi])
 
-        full_response_text = ""
+        clean_responses = []
 
         if syllabi:
             for s in syllabi:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], s.filename)
                 response = call_llm_multi(question, filepath)
-                text = response['content'] if isinstance(response, dict) and 'content' in response else str(response)
 
-                full_response_text += f"\n📘 {s.course_number.upper()} - {s.course_name} ({s.department})\n{text}\n"
+                if isinstance(response, dict) and 'content' in response:
+                    answer_text = response['content']
+                elif isinstance(response, dict) and 'response' in response and 'content' in response['response']:
+                    answer_text = response['response']['content']
+                else:
+                    answer_text = "Sorry, there was an error retrieving information from this syllabus."
+
+                course_info = f"📘 {s.course_number.upper()} - {s.course_name} ({s.department})"
+                full_response = f"{course_info}\n{answer_text.strip()}"
+                clean_responses.append(full_response)
         else:
-            full_response_text = "Sorry, I couldn't find any relevant course materials."
+            clean_responses.append("Sorry, I couldn't find any relevant course materials.")
+
+        combined_response = "\n\n".join(clean_responses)
 
         history = session.get('chat_history', [])
         history.append({"role": "user", "content": question})
-        history.append({"role": "assistant", "content": full_response_text})
+        history.append({"role": "assistant", "content": combined_response})
         session['chat_history'] = history
 
         return redirect(url_for('chat'))

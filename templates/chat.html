@@ -13,7 +13,6 @@
     <option value="psychology">Psychology</option>
   </select>
 
-
   <label for="course_number">Course Number (optional):</label>
   <input type="text" name="course_number" placeholder="e.g., cs-123"><br><br>
 
@@ -24,7 +23,7 @@
 <style>
   .chat-wrapper {
     height: 70vh;
-    overflow-y: scroll;
+    overflow-y: auto;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -45,13 +44,15 @@
     padding: 10px;
     border-radius: 10px;
     text-align: left;
+    white-space: pre-line;
   }
 </style>
 
 <div class="chat-wrapper" id="chat-window">
   {% for msg in chat_history %}
     <div class="chat-bubble {{ msg.role }}">
-      <strong>{{ msg.role.capitalize() }}:</strong> {{ msg.content }}
+      <strong>{{ msg.role.capitalize() }}:</strong> 
+      <p>{{ msg.content }}</p>
     </div>
   {% endfor %}
 </div>
